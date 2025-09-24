@@ -1,234 +1,179 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Check, RotateCcw, Share2, Copy, Link as LinkIcon } from "lucide-react";
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>快眠ゴリラ心理クイズ</title>
+  <style>
+    :root { --pink:#ffeef5; --ink:#222; --muted:#666; }
+    *{box-sizing:border-box}
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; background:var(--pink); color:var(--ink); }
+    .wrap { max-width:860px; margin:auto; padding:24px; min-height:100vh; display:flex; flex-direction:column; }
+    header { text-align:center; margin-bottom:16px; }
+    h1 { font-size:clamp(22px, 3.2vw, 34px); margin:8px 0; }
+    p.lead { color:var(--muted); margin:0 0 8px; }
+    .card { background:#fff; border-radius:16px; padding:20px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
+    .qtitle { font-size:clamp(18px, 2.6vw, 22px); font-weight:700; line-height:1.4; margin:0 0 14px; }
+    .grid { display:grid; grid-template-columns:1fr; gap:10px; }
+    @media(min-width:720px){ .grid{ grid-template-columns:repeat(3,1fr);} }
+    .choice { text-align:left; border:1px solid #eee; background:#fff; border-radius:14px; padding:14px; cursor:pointer; transition:.15s; box-shadow:0 2px 6px rgba(0,0,0,.04); }
+    .choice:hover { background:#ffd7e7; transform:translateY(-1px); }
+    .ckey { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#888; font-size:12px; letter-spacing:.08em; }
+    .label { font-weight:600; margin-top:4px; }
+    .foot { margin-top:14px; padding-top:12px; border-top:1px solid #eee; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; color:#666; font-size:13px;}
+    .btn { appearance:none; border:none; border-radius:12px; padding:10px 14px; cursor:pointer; }
+    .btn-outline { background:#fff; border:1px solid #ddd; }
+    .btn-ghost { background:transparent; }
+    .center { text-align:center; }
+    .result h2 { font-size:clamp(22px,3vw,28px); margin:10px 0 6px; }
+    .result p { margin:6px 0; color:#555; }
+    .cta { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; background:#000; color:#fff; text-decoration:none; }
+    .note { text-align:center; color:#777; font-size:12px; margin-top:10px; }
+    progress { width:100%; height:8px; accent-color:#ff7aaa; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>快眠ゴリラ心理クイズ</h1>
+      <p class="lead">飲み会で遊べる3問診断。リンクを配って各自スマホで回答！</p>
+    </header>
 
-/**
- * 快眠ゴリラ心理クイズ - 単一ファイルReactコンポーネント
- * 使い方：このファイルを1ページとしてデプロイ（Vite/Next/CRAいずれでもOK）。
- * 共有：回答後に「結果リンクをコピー」でURLを配布すれば、同じ結果が開けます。
- * 企画：飲み会で全員が同じリンクを開き、進行役が読み上げ。各自がタップで回答→結果が出ます。
- */
+    <div class="card">
+      <div id="meta">
+        <div id="status" style="font-weight:600;margin-bottom:6px;">Q1 / 3</div>
+        <progress id="bar" max="3" value="1"></progress>
+      </div>
 
-const QUESTIONS = [
-  {
-    id: "q1",
-    title: "理想の“眠りの森”をイメージしてください。どんな場所で眠りたい？",
-    choices: [
-      { key: "A", label: "木々の間を抜ける涼しい風が心地よい森" },
-      { key: "B", label: "小川のせせらぎが静かに響く森" },
-      { key: "C", label: "やわらかな焚き火のそばで安心できる森" },
-    ],
-  },
-  {
-    id: "q2",
-    title: "布団に入ったとき、つい考えてしまうことは？",
-    choices: [
-      { key: "A", label: "今日もよく歩いたな…足の重さが気になる" },
-      { key: "B", label: "明日も元気でいたいな…体調を整えたい" },
-      { key: "C", label: "やっぱり心を落ち着けて眠りたい" },
-    ],
-  },
-  {
-    id: "q3",
-    title: "理想の眠りに近いイメージは？",
-    choices: [
-      { key: "A", label: "脚がすっと軽くなって深く眠れる" },
-      { key: "B", label: "じんわりリラックスして自然と眠りに落ちる" },
-      { key: "C", label: "安心感に包まれて心地よく眠れる" },
-    ],
-  },
-] as const;
+      <div id="stage" style="margin-top:16px;"></div>
 
-const PRODUCTS = {
-  A: {
-    code: "hitotsukami",
-    name: "ゴリラのひとつかみ（ふくらはぎケア）",
-    tagline: "脚が軽くなると、眠りは深くなる。",
-    type: "リフレッシュ快眠タイプ",
-  },
-  B: {
-    code: "hitotsuki",
-    name: "ゴリラのひとつき（足うらケア）",
-    tagline: "ツボをじんわり、自然にとろける入眠に。",
-    type: "リラックス快眠タイプ",
-  },
-  C: {
-    code: "akushu",
-    name: "ゴリラの握手（手ケア）",
-    tagline: "ぬくもりの安心感で、すっと夢の中へ。",
-    type: "安心快眠タイプ",
-  },
-} as const;
-
-type Key = keyof typeof PRODUCTS; // "A" | "B" | "C"
-
-function chooseResult(answers: Record<string, Key>): Key {
-  const counts: Record<Key, number> = { A: 0, B: 0, C: 0 };
-  Object.values(answers).forEach((k) => (counts[k] += 1));
-  const max = Math.max(counts.A, counts.B, counts.C);
-  const candidates = (Object.keys(counts) as Key[]).filter((k) => counts[k] === max);
-  // 同数の場合はQ1→Q2→Q3の優先順で決める
-  if (candidates.length > 1) {
-    for (const q of QUESTIONS) {
-      const k = answers[q.id];
-      if (candidates.includes(k)) return k;
-    }
-  }
-  return candidates[0];
-}
-
-function enc(answers: Record<string, Key>) {
-  const s = QUESTIONS.map((q) => answers[q.id] ?? "").join("");
-  return s;
-}
-function dec(s: string): Record<string, Key> {
-  const out: Record<string, Key> = {} as any;
-  QUESTIONS.forEach((q, i) => {
-    const ch = (s || "")[i] as Key | undefined;
-    if (ch && ["A", "B", "C"].includes(ch)) out[q.id] = ch;
-  });
-  return out;
-}
-
-export default function SleepGorillaQuiz() {
-  const urlParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const preset = urlParams.get("answers") || urlParams.get("a") || "";
-  const [answers, setAnswers] = useState<Record<string, Key>>(() => dec(preset));
-  const [step, setStep] = useState<number>(() => {
-    const filled = Object.keys(answers).length;
-    return Math.min(filled, QUESTIONS.length);
-  });
-
-  const progress = (step / QUESTIONS.length) * 100;
-  const finished = step >= QUESTIONS.length;
-  const resultKey = useMemo(() => (finished ? chooseResult(answers) : undefined), [finished, answers]);
-  const result = resultKey ? PRODUCTS[resultKey] : undefined;
-
-  useEffect(() => {
-    // URLに回答短縮コードを反映（他の人と同じ結果を共有できる）
-    const code = enc(answers);
-    const params = new URLSearchParams(window.location.search);
-    if (code) {
-      params.set("a", code);
-    } else {
-      params.delete("a");
-    }
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, "", newUrl);
-  }, [answers]);
-
-  const handleSelect = (qId: string, key: Key) => {
-    setAnswers((prev) => ({ ...prev, [qId]: key }));
-    setStep((s) => Math.min(s + 1, QUESTIONS.length));
-  };
-
-  const reset = () => {
-    setAnswers({});
-    setStep(0);
-  };
-
-  const copyLink = async () => {
-    const link = window.location.href;
-    try {
-      await navigator.clipboard.writeText(link);
-      alert("リンクをコピーしました！");
-    } catch (e) {
-      prompt("コピーできない場合は手動で選択してください", link);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-pink-50 text-gray-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl">
-        <header className="mb-6 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">快眠ゴリラ心理クイズ</h1>
-          <p className="text-gray-600 mt-2">飲み会で遊べる3問診断。リンクを配って各自スマホで回答！</p>
-        </header>
-
-        <Card className="shadow-xl rounded-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="text-xl">{finished ? "結果" : `Q${step + 1} / ${QUESTIONS.length}`}</span>
-            </CardTitle>
-            {!finished && <Progress value={progress} className="h-2" />}
-          </CardHeader>
-
-          <CardContent className="space-y-6">
-            {!finished ? (
-              <Question
-                q={QUESTIONS[step]}
-                onSelect={handleSelect}
-              />
-            ) : (
-              <ResultView key={resultKey} resultKey={resultKey!} result={result!} onReset={reset} onCopy={copyLink} />
-            )}
-
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t">
-              <div className="text-sm text-gray-500 flex items-center gap-2">
-                <LinkIcon className="w-4 h-4" />
-                <span>このページを全員に配って同時に回答OK</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={copyLink}><Copy className="w-4 h-4 mr-1"/>結果リンクをコピー</Button>
-                <Button variant="ghost" size="sm" onClick={reset}><RotateCcw className="w-4 h-4 mr-1"/>やり直す</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <footer className="mt-6 text-center text-xs text-gray-500">
-          <p>※プレゼントは「一番多く選んだ答え」で決定（同数時はQ1→Q2→Q3の順で優先）。</p>
-        </footer>
+      <div class="foot">
+        <div>このページのURLを配れば、全員が同時に回答できます。</div>
+        <div>
+          <button id="copy" class="btn btn-outline">結果リンクをコピー</button>
+          <button id="reset" class="btn btn-ghost">やり直す</button>
+        </div>
       </div>
     </div>
-  );
-}
 
-function Question({ q, onSelect }: { q: typeof QUESTIONS[number]; onSelect: (id: string, key: Key) => void }) {
-  return (
-    <div className="space-y-5">
-      <h2 className="text-2xl font-semibold leading-snug">{q.title}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {q.choices.map((c) => (
-          <button
-            key={c.key}
-            onClick={() => onSelect(q.id, c.key as Key)}
-            className="text-left rounded-2xl border bg-white hover:bg-pink-100 transition p-4 shadow-sm"
-          >
-            <div className="text-sm text-gray-500 font-mono mb-1">{c.key}</div>
-            <div className="font-medium">{c.label}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+    <div class="note">※プレゼントは「一番多く選んだ答え」で決定（同数時はQ1→Q2→Q3の順で優先）。</div>
+  </div>
 
-function ResultView({ resultKey, result, onReset, onCopy }: { resultKey: Key; result: (typeof PRODUCTS)[Key]; onReset: () => void; onCopy: () => void }) {
-  const productUrl = "https://e-doshisha.com/hanako/index.html"; // 公式ページ（シリーズ一覧）
-  return (
-    <div className="space-y-4">
-      <div className="text-center space-y-2">
-        <div className="inline-block text-5xl">🦍✨</div>
-        <h2 className="text-2xl md:text-3xl font-bold">あなたは「{result.type}」</h2>
-        <p className="text-gray-600">おすすめ：<span className="font-semibold">{result.name}</span></p>
-        <p className="text-gray-500">{result.tagline}</p>
-      </div>
-      <div className="flex flex-wrap gap-3 justify-center">
-        <a href={productUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-black text-white hover:opacity-90">
-          <Check className="w-4 h-4" />
-          商品ページを見る
-        </a>
-        <Button variant="outline" onClick={onCopy}><Share2 className="w-4 h-4 mr-1"/>結果リンクをコピー</Button>
-        <Button variant="ghost" onClick={onReset}><RotateCcw className="w-4 h-4 mr-1"/>最初から</Button>
-      </div>
-      <div className="text-xs text-gray-500 text-center">
-        URLパラメータ「?a=ABC」で結果を再現できます（例：A=Q1、B=Q2、C=Q3）。
-      </div>
-    </div>
-  );
-}
+  <script>
+    // ====== データ ======
+    const QUESTIONS = [
+      { id:"q1", title:"理想の“眠りの森”をイメージしてください。どんな場所で眠りたい？",
+        choices:[{key:"A",label:"木々の間を抜ける涼しい風が心地よい森"},
+                 {key:"B",label:"小川のせせらぎが静かに響く森"},
+                 {key:"C",label:"やわらかな焚き火のそばで安心できる森"}] },
+      { id:"q2", title:"布団に入ったとき、つい考えてしまうことは？",
+        choices:[{key:"A",label:"今日もよく歩いたな…足の重さが気になる"},
+                 {key:"B",label:"明日も元気でいたいな…体調を整えたい"},
+                 {key:"C",label:"やっぱり心を落ち着けて眠りたい"}] },
+      { id:"q3", title:"理想の眠りに近いイメージは？",
+        choices:[{key:"A",label:"脚がすっと軽くなって深く眠れる"},
+                 {key:"B",label:"じんわりリラックスして自然と眠りに落ちる"},
+                 {key:"C",label:"安心感に包まれて心地よく眠れる"}] },
+    ];
+    const PRODUCTS = {
+      A:{ name:"ゴリラのひとつかみ（ふくらはぎケア）", tagline:"脚が軽くなると、眠りは深くなる。", type:"リフレッシュ快眠タイプ",
+         url:"https://e-doshisha.com/hanako/index.html"},
+      B:{ name:"ゴリラのひとつき（足うらケア）", tagline:"ツボをじんわり、自然にとろける入眠に。", type:"リラックス快眠タイプ",
+         url:"https://e-doshisha.com/hanako/index.html"},
+      C:{ name:"ゴリラの握手（手ケア）", tagline:"ぬくもりの安心感で、すっと夢の中へ。", type:"安心快眠タイプ",
+         url:"https://e-doshisha.com/hanako/index.html"},
+    };
+
+    // ====== 状態 ======
+    const stage = document.getElementById("stage");
+    const bar = document.getElementById("bar");
+    const statusEl = document.getElementById("status");
+    const copyBtn = document.getElementById("copy");
+    const resetBtn = document.getElementById("reset");
+
+    const qs = new URLSearchParams(location.search);
+    const preset = (qs.get("a") || qs.get("answers") || "").toUpperCase();
+    const answers = {};
+    if (preset) [...preset].forEach((ch, i)=>{ if("ABC".includes(ch)) answers[QUESTIONS[i].id]=ch; });
+
+    let step = Object.keys(answers).length;
+
+    function chooseResult(ans){
+      const count = {A:0,B:0,C:0};
+      Object.values(ans).forEach(k=>count[k]++);
+      const max = Math.max(count.A, count.B, count.C);
+      const cands = ["A","B","C"].filter(k=>count[k]===max);
+      if (cands.length>1){
+        for(const q of QUESTIONS){ const k = ans[q.id]; if(cands.includes(k)) return k; }
+      }
+      return cands[0];
+    }
+    const enc = (ans)=> QUESTIONS.map(q=>ans[q.id]||"").join("");
+
+    function renderQuestion(i){
+      statusEl.textContent = `Q${i+1} / ${QUESTIONS.length}`;
+      bar.value = i+1;
+      const q = QUESTIONS[i];
+      stage.innerHTML = `
+        <div class="qtitle">${q.title}</div>
+        <div class="grid">
+          ${q.choices.map(c=>`
+            <button class="choice" data-k="${c.key}">
+              <div class="ckey">${c.key}</div>
+              <div class="label">${c.label}</div>
+            </button>`).join("")}
+        </div>`;
+      stage.querySelectorAll(".choice").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          answers[q.id] = btn.dataset.k;
+          step++;
+          if (step>=QUESTIONS.length) return renderResult();
+          renderQuestion(step);
+          syncUrl();
+        });
+      });
+    }
+
+    function renderResult(){
+      const key = chooseResult(answers);
+      const p = PRODUCTS[key];
+      statusEl.textContent = "結果";
+      bar.value = bar.max;
+      stage.innerHTML = `
+        <div class="center result">
+          <div style="font-size:46px">🦍✨</div>
+          <h2>あなたは「${p.type}」</h2>
+          <p>おすすめ：<strong>${p.name}</strong></p>
+          <p style="color:#777">${p.tagline}</p>
+          <p class="center" style="margin-top:10px">
+            <a class="cta" href="${p.url}" target="_blank" rel="noreferrer">商品ページを見る</a>
+          </p>
+          <div class="note">URLパラメータ「?a=ABC」で結果を再現できます（例：A=Q1、B=Q2、C=Q3）。</div>
+        </div>`;
+      syncUrl();
+    }
+
+    function syncUrl(){
+      const code = enc(answers);
+      const n = new URL(location.href);
+      if (code) n.searchParams.set("a", code); else n.searchParams.delete("a");
+      history.replaceState({}, "", n.toString());
+    }
+
+    // 初期表示
+    if (step>=QUESTIONS.length) renderResult(); else renderQuestion(step);
+
+    // 共有＆リセット
+    copyBtn.addEventListener("click", async ()=>{
+      try { await navigator.clipboard.writeText(location.href); alert("リンクをコピーしました！"); }
+      catch { prompt("コピーできない場合は手動で選択してください", location.href); }
+    });
+    resetBtn.addEventListener("click", ()=>{
+      location.href = location.pathname; // クエリもクリアして最初から
+    });
+  </script>
+</body>
+</html>
+
 
 

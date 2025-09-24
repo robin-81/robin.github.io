@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>快眠ゴリラ心理クイズ</title>
+  <style>
+    body { font-family: sans-serif; background:#ffeef5; padding:20px; }
+    h1 { text-align:center; }
+    .question { margin:20px 0; padding:15px; background:#fff; border-radius:12px; }
+    button { display:block; margin:8px 0; padding:10px; width:100%; border:none; border-radius:8px; background:#ff4081; color:#fff; font-size:16px; cursor:pointer; }
+    button:hover { opacity:0.8; }
+    #result { margin-top:20px; font-weight:bold; font-size:18px; text-align:center; }
+  </style>
+</head>
+<body>
+  <h1>快眠ゴリラ心理クイズ</h1>
+  <div id="quiz"></div>
+  <div id="result"></div>
+
+  <script>
+    const questions = [
+      {q:"理想の“眠りの森”をイメージしてください。どんな場所で眠りたい？",
+       a:"木々の間を抜ける涼しい森 → ゴリラのひとつかみ（ふくらはぎケア）",
+       b:"小川のせせらぎが響く森 → ゴリラのひとつき（足うらケア）",
+       c:"焚き火のそばで安心できる森 → ゴリラの握手（手ケア）"},
+      {q:"布団に入ったとき、つい考えてしまうことは？",
+       a:"今日もよく歩いたな…足の重さ → ゴリラのひとつかみ",
+       b:"明日も元気でいたいな…体調を整えたい → ゴリラのひとつき",
+       c:"やっぱり心を落ち着けたい → ゴリラの握手"},
+      {q:"理想の眠りに近いイメージは？",
+       a:"脚がすっと軽くなって深く眠れる → ゴリラのひとつかみ",
+       b:"じんわりリラックスして眠りに落ちる → ゴリラのひとつき",
+       c:"安心感に包まれて眠れる → ゴリラの握手"},
+    ];
+    const quizDiv=document.getElementById("quiz");
+    const resultDiv=document.getElementById("result");
+    let answers=[];
+    function render(i){
+      if(i>=questions.length){
+        const counts={a:0,b:0,c:0};
+        answers.forEach(k=>counts[k]++);
+        let res = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+        let msg={a:"ゴリラのひとつかみ（ふくらはぎケア）",
+                 b:"ゴリラのひとつき（足うらケア）",
+                 c:"ゴリラの握手（手ケア）"}[res];
+        resultDiv.innerHTML=`あなたにおすすめは <br><span style='font-size:20px;color:#e91e63;'>${msg}</span>`;
+        quizDiv.innerHTML=\"\";
+        return;
+      }
+      const q=questions[i];
+      quizDiv.innerHTML=`<div class='question'><p>${q.q}</p>
+        <button onclick='choose(\"a\",${i})'>${q.a}</button>
+        <button onclick='choose(\"b\",${i})'>${q.b}</button>
+        <button onclick='choose(\"c\",${i})'>${q.c}</button></div>`;
+    }
+    window.choose=(ans,i)=>{answers[i]=ans;render(i+1);}
+    render(0);
+  </script>
+</body>
+</html>
